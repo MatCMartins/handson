@@ -4,11 +4,16 @@
 #        Ciência da Computação:         Ana Paula Serra / Angelo Zanini / Nuncio Perrella / Mateus Capaldo
 #        Design:                        Tiago Perrella
 
+import os
 import serial.tools.list_ports
 import serial
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import matplotlib.image as mpimg
+#dotenv
+from dotenv import load_dotenv
+from urllib.request import urlopen
+from io import BytesIO
 
 def listar_portas_seriais():
     portas = serial.tools.list_ports.comports()
@@ -21,47 +26,58 @@ ser = serial.Serial(
     stopbits=serial.STOPBITS_ONE,
     bytesize=serial.EIGHTBITS
 )
+#get url with dotenv
+load_dotenv()
+url= os.getenv('URL_IMAGEM')
 
-# url = 'https://maua.br/images/logo-IMT.png'
-# image = mpimg.imread('https://maua.br/images/logo-IMT.png')
+image = mpimg.imread(BytesIO(urlopen(url).read()), format=os.getenv('TIPO_IMAGEM'))
 
-# Configuração do gráfico
 fig, ax = plt.subplots()
-fig.patch.set_facecolor("#004785")
-# fig.figimage(image, 50, 400, zorder=1) 
+fig.canvas.manager.set_window_title('Sensor de Altura - Mauá')
+fig.patch.set_facecolor("#02278F")
+logo_ax = fig.add_axes([0.84, 0.87999, 0.15, 0.15], anchor='NE', zorder=1)
+logo_ax.imshow(image)
+logo_ax.axis('off')
+
+
 xs = []
 ys = []
 
 def animate(i, xs, ys):
     # Ler uma linha da porta serial
     line = ser.readline().decode('utf-8').strip()
-    # Adicionar os dados lidos nas listas
-
+    
     try:
         xs.append(len(xs))
         if line == "Couldn't get distance: 0":
             raise Exception
         ys.append(float(line))
-        print(line)
+        
     except ValueError as err:
         print(f"Inicializando conexão: {err}")
         ys.append(0)
     except Exception as err:
         print(f"Valor inválido encontrado: {err}")
         ys.append(sum(ys[len(ys) - 11: len(ys) - 1])/len(ys[len(ys) - 11: len(ys) - 1]))
-
+    print(line)
     # Limitar o tamanho das listas para manter o gráfico atualizado
-    xs = xs[-100:]
-    ys = ys[-100:]
+    xs = xs[-45:]
+    ys = ys[-45:]
 
     # Limpar e atualizar o gráfico
     ax.clear()
     ax.plot(xs, ys, color='white')
 
-    # Configurar os eixos
-    ax.set_xlabel('Tempo [ms]', color='white')
-    ax.set_ylabel('Medida [mm]', color='white')
-    ax.set_title('Sensor de Altura  - Mauá', color='white')
+
+    fig_width, fig_height = fig.get_size_inches()
+    base_fontsize = fig_width * 1.1 
+    labelpad = fig_height * 1.7      
+    title_fontsize = fig_height * 3
+
+    ax.set_xlabel('Tempo [ms]', color='white', fontweight='bold', fontsize=base_fontsize, labelpad=labelpad)
+    ax.set_ylabel('Medida [mm]', color='white', fontweight='bold', fontsize=base_fontsize, labelpad=labelpad)
+    ax.set_title('Sensor de Altura - Mauá', color='white', fontweight='bold', fontsize=title_fontsize, pad=labelpad)
+
 
     ax.spines['bottom'].set_color('white')  
     ax.spines['left'].set_color('white')  
@@ -71,12 +87,10 @@ def animate(i, xs, ys):
     ax.tick_params(axis='x', colors='white') 
     ax.tick_params(axis='y', colors='white')
    
-    ax.set_facecolor("#004785")
+    ax.set_facecolor("#02278F")
    
 # Configuração da animação
 ani = animation.FuncAnimation(fig, animate, fargs=(xs, ys), interval=100)
-
-
 
 # Mostrar o gráfico
 plt.show()
